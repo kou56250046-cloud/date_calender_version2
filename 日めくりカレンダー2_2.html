@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>日めくり名言カレンダー</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+        "Segoe UI", "Yu Gothic", "游ゴシック体", "Hiragino Kaku Gothic ProN",
+        Meiryo, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: #fff;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: background-image 1.2s ease-in-out;
+      padding: env(safe-area-inset-top, 8px) env(safe-area-inset-right, 8px)
+               env(safe-area-inset-bottom, 8px) env(safe-area-inset-left, 8px);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center,
+        rgba(0, 0, 0, 0.25),
+        rgba(0, 0, 0, 0.65));
+      pointer-events: none;
+    }
+
+    .app-container {
+      position: relative;
+      z-index: 1;
+      max-width: 840px;
+      width: 100%;
+      max-height: min(680px, 100vh - 24px);
+      margin: 0 auto;
+      padding: 18px 16px 14px;
+      border-radius: 24px;
+      background: rgba(0, 0, 0, 0.25);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(2px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .date {
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    .tag {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+
+    .quote-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 6px 6px 10px;
+      gap: 8px;
+      min-height: 220px;
+      transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+    }
+
+    .quote-area.fade-out {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    .quote-area.fade-in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 名言テキスト：ふわっと浮かび上がる（光彩控えめ） */
+    .quote-text {
+      font-size: clamp(1.2rem, 4vw, 2.2rem);
+      line-height: 1.5;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 0 4px;
+      word-break: keep-all;
+      white-space: pre-line;
+
+      opacity: 0;
+      filter: blur(4px);
+      transform: translateY(12px);
+
+      text-shadow: 0 0 0px rgba(255, 255, 255, 0.0);
+
+      animation: floatInGlow 0.9s ease-out forwards;
+    }
+
+    @keyframes floatInGlow {
+      0% {
+        opacity: 0;
+        filter: blur(8px);
+        transform: translateY(16px);
+        text-shadow: 0 0 0px rgba(255, 255, 255, 0.0);
+      }
+      60% {
+        opacity: 1;
+        filter: blur(1px);
+        transform: translateY(0);
+        text-shadow:
+          0 0 4px rgba(255, 255, 255, 0.35),
+          0 0 8px rgba(255, 255, 255, 0.2);
+      }
+      100% {
+        opacity: 1;
+        filter: blur(0px);
+        transform: translateY(0);
+        text-shadow:
+          0 0 2px rgba(255, 255, 255, 0.25),
+          0 0 6px rgba(255, 255, 255, 0.18);
+      }
+    }
+
+    .vertical {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      letter-spacing: 0.15em;
+      line-height: 1.8;
+    }
+
+    .author {
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+
+    .author span {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      margin-left: 6px;
+      font-size: 0.78rem;
+    }
+
+    .theme-label {
+      font-size: 0.75rem;
+      opacity: 0.9;
+      margin-top: 2px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
+        background 0.15s ease-out;
+      white-space: nowrap;
+      min-width: 0;
+      flex: 1 1 calc(50% - 8px);
+      max-width: 260px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ff7b2f, #ff3b3b);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .btn-secondary {
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #eee;
+      border: 1px dashed rgba(255, 255, 255, 0.3);
+      font-size: 0.8rem;
+      flex: 1 1 100%;
+      max-width: none;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.55);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    }
+
+    .footer {
+      margin-top: 2px;
+      font-size: 0.72rem;
+      opacity: 0.85;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .saved-info {
+      opacity: 0.95;
+    }
+
+    .status {
+      min-height: 1em;
+      text-align: right;
+      font-size: 0.72rem;
+    }
+
+    .status--ok {
+      color: #ffd966;
+    }
+
+    .status--warn {
+      color: #ffcccc;
+    }
+
+    @media (max-width: 600px) {
+      .app-container {
+        border-radius: 20px;
+        padding: 14px 12px 10px;
+        max-height: none;
+        height: calc(100vh - 24px);
+      }
+
+      .quote-text {
+        font-size: 1.25rem;
+      }
+
+      .header {
+        font-size: 0.8rem;
+      }
+
+      .controls {
+        justify-content: center;
+      }
+
+      button {
+        flex: 1 1 100%;
+        max-width: none;
+      }
+
+      .footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+
+  <div class="app-container">
+    <div class="header">
+      <div class="date" id="today"></div>
+      <div class="tag">日めくり名言カレンダー</div>
+    </div>
+
+    <div class="quote-area fade-in" id="quoteArea">
+      <div class="quote-text" id="quoteText"></div>
+      <div class="author" id="author"></div>
+      <div class="theme-label" id="themeLabel"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-primary" id="nextBtn">🔥 次の名言へ</button>
+      <button class="btn-secondary" id="saveBtn">💾 今日の名言を記録する</button>
+      <button class="btn-ghost" id="toggleVerticalBtn">↕ 縦書き切替</button>
+    </div>
+
+    <div class="footer">
+      <div class="saved-info" id="savedInfo"></div>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 名言データ（quotes.json）読み込み =====
+    let quotes = [];
+
+    async function loadQuotes() {
+      try {
+        const res = await fetch('quotes_2.json');
+        if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
+
+        const data = await res.json();
+        // \n を改行に変換
+        quotes = data.map(q => ({
+          text: String(q.text).replace(/\\n/g, '\n'),
+          authorName: String(q.authorName || '')
+        }));
+      } catch (e) {
+        console.error('JSON読み込みエラー', e);
+        quotes = [
+          {
+            text: "名言データの読み込みに失敗しました。\nquotes.json を確認してください。",
+            authorName: "System"
+          }
+        ];
+      }
+    }
+
+    // ===== DOM取得 =====
+    const todayEl = document.getElementById("today");
+    const quoteAreaEl = document.getElementById("quoteArea");
+    const quoteTextEl = document.getElementById("quoteText");
+    const authorEl = document.getElementById("author");
+    const themeLabelEl = document.getElementById("themeLabel");
+    const nextBtn = document.getElementById("nextBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const toggleVerticalBtn = document.getElementById("toggleVerticalBtn");
+    const savedInfoEl = document.getElementById("savedInfo");
+    const statusEl = document.getElementById("status");
+
+    // ===== 日付 =====
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const formattedDate = `${yyyy}.${mm}.${dd}`;
+    todayEl.textContent = formattedDate;
+
+    // ===== 背景画像 =====
+    const backgrounds = [
+      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1504386106331-3e4e71712b38?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1500530855960-fd53ca2f2e8e?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=2000&q=80",
+      "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=2000&q=80"
+    ];
+
+    const baseSeed = yyyy * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    let offset = 0;
+
+    function getCurrentIndex() {
+      if (!quotes.length) return 0;
+      return (baseSeed + offset) % quotes.length;
+    }
+
+    function getBackgroundIndex() {
+      return (baseSeed + offset) % backgrounds.length;
+    }
+
+    function updateBackground() {
+      const bgUrl = backgrounds[getBackgroundIndex()];
+      document.body.style.backgroundImage = `url('${bgUrl}')`;
+    }
+
+    // ===== 名言表示 =====
+    function renderQuote() {
+      const index = getCurrentIndex();
+      const q = quotes[index];
+
+      quoteAreaEl.classList.remove("fade-in");
+      quoteAreaEl.classList.add("fade-out");
+
+      setTimeout(() => {
+        quoteTextEl.textContent = q.text;
+
+        const authorText = q.authorName
+          ? `作者：${q.authorName}`
+          : "";
+
+        authorEl.innerHTML = authorText ? `<span>${authorText}</span>` : "";
+        themeLabelEl.textContent = ""; // 今回はテーマなし
+
+        quoteAreaEl.classList.remove("fade-out");
+        quoteAreaEl.classList.add("fade-in");
+      }, 220);
+
+      updateBackground();
+      statusEl.textContent = "";
+      statusEl.className = "status";
+    }
+
+    // ===== 保存系 =====
+    const STORAGE_KEY = "daily_quotes_saved";
+
+    function loadSavedQuotes() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        return JSON.parse(raw);
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCurrentQuote() {
+      const index = getCurrentIndex();
+      const q = quotes[index];
+      const saved = loadSavedQuotes();
+
+      const already = saved.some(
+        (item) => item.date === formattedDate && item.text === q.text
+      );
+
+      if (already) {
+        statusEl.textContent = "今日はすでにこの名言を記録済みです。";
+        statusEl.className = "status status--warn";
+        return;
+      }
+
+      saved.push({
+        date: formattedDate,
+        text: q.text,
+        authorName: q.authorName,
+        savedAt: new Date().toISOString()
+      });
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+        statusEl.textContent = "今日の名言を記録しました。";
+        statusEl.className = "status status--ok";
+        updateSavedInfo();
+      } catch {
+        statusEl.textContent = "保存に失敗しました（容量制限など）。";
+        statusEl.className = "status status--warn";
+      }
+    }
+
+    function updateSavedInfo() {
+      const saved = loadSavedQuotes();
+      const todayCount = saved.filter((s) => s.date === formattedDate).length;
+      savedInfoEl.textContent =
+        `これまでに記録した名言：${saved.length}件　（本日：${todayCount}件）`;
+    }
+
+    // ===== 縦書き切替 =====
+    let isVertical = false;
+    function toggleVertical() {
+      isVertical = !isVertical;
+      if (isVertical) {
+        quoteTextEl.classList.add("vertical");
+        toggleVerticalBtn.textContent = "↔ 横書きに戻す";
+      } else {
+        quoteTextEl.classList.remove("vertical");
+        toggleVerticalBtn.textContent = "↕ 縦書き切替";
+      }
+    }
+
+    // ===== イベント登録 =====
+    nextBtn.addEventListener("click", () => {
+      offset += 1;
+      renderQuote();
+    });
+
+    saveBtn.addEventListener("click", saveCurrentQuote);
+    toggleVerticalBtn.addEventListener("click", toggleVertical);
+
+    // ===== 初期化 =====
+    async function initApp() {
+      await loadQuotes();   // JSON読み込み
+      updateSavedInfo();    // 保存数表示
+      renderQuote();        // 最初の名言を描画
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
